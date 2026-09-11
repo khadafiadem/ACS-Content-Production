@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - ACS Content Production{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {% for status_name, count in stats.items() %}
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold
+                {% if status_name == 'draft' %}text-yellow-400
+                {% elif status_name == 'review' %}text-blue-400
+                {% elif status_name == 'scheduled' %}text-purple-400
+                {% elif status_name == 'published' %}text-emerald-400
+                {% elif status_name == 'failed' %}text-red-400
+                {% else %}text-gray-400{% endif %}">
+                {{ count }}
+            </div>
+            <div class="text-xs text-gray-400 mt-1 uppercase tracking-wide">{{ status_name }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Filter -->
+    <div class="flex gap-2 flex-wrap">
+        <a href="/" class="px-3 py-1 rounded text-sm bg-gray-800 hover:bg-gray-700 text-gray-300">All</a>
+        {% for s in ['draft','review','scheduled','published','rejected','failed'] %}
+        <a href="/?status={{ s }}" class="px-3 py-1 rounded text-sm bg-gray-800 hover:bg-gray-700 text-gray-300">{{ s }}</a>
+        {% endfor %}
+    </div>
+
+    <!-- Contents Table -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-800 text-gray-400 text-left">
+                <tr>
+                    <th class="px-4 py-3">ID</th>
+                    <th class="px-4 py-3">Topik</th>
+                    <th class="px-4 py-3">Hook</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Scheduled</th>
+                    <th class="px-4 py-3">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in contents %}
+                <tr class="border-t border-gray-800 hover:bg-gray-800/50">
+                    <td class="px-4 py-3 text-gray-500">{{ c.id }}</td>
+                    <td class="px-4 py-3 font-medium">{{ c.topic }}</td>
+                    <td class="px-4 py-3 text-gray-400 max-w-[200px] truncate">{{ c.hook }}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded text-xs font-medium
+                            {% if c.status.value == 'draft' %}bg-yellow-900 text-yellow-300
+                            {% elif c.status.value == 'review' %}bg-blue-900 text-blue-300
+                            {% elif c.status.value == 'scheduled' %}bg-purple-900 text-purple-300
+                            {% elif c.status.value == 'published' %}bg-emerald-900 text-emerald-300
+                            {% elif c.status.value == 'failed' %}bg-red-900 text-red-300
+                            {% else %}bg-gray-800 text-gray-400{% endif %}">
+                            {{ c.status.value }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">
+                        {{ c.scheduled_at.strftime('%d %b %H:%M') if c.scheduled_at else '-' }}
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex gap-1">
+                            {% if c.status.value == 'review' %}
+                            <button onclick="approveContent({{ c.id }})"
+                                class="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 rounded text-xs text-white">
+                                Approve
+                            </button>
+                            <button onclick="rejectContent({{ c.id }})"
+                                class="px-2 py-0.5 bg-red-700 hover:bg-red-600 rounded text-xs text-white">
+                                Reject
+                            </button>
+                            {% endif %}
+                            {% if c.status.value == 'review' or c.status.value == 'scheduled' %}
+                            <button onclick="publishTikTok({{ c.id }})"
+                                class="px-2 py-0.5 bg-pink-700 hover:bg-pink-600 rounded text-xs text-white">
+                                📤 TikTok
+                            </button>
+                            {% endif %}
+                            <button onclick="toggleDetail({{ c.id }}, '{{ c.status.value }}')"
+                                class="px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300">
+                                Detail
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="detail-{{ c.id }}" class="hidden bg-gray-850">
+                    <td colspan="6" class="px-4 py-4">
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="shrink-0">
+                                <strong class="text-gray-400 block mb-2">🎬 Video Preview</strong>
+                                <div id="videobox-{{ c.id }}" class="hidden">
+                                    <video id="vplayer-{{ c.id }}" width="270" height="480" controls
+                                        class="rounded border border-gray-700 bg-black"></video>
+                                    <a id="vlink-{{ c.id }}" href="#" download
+                                       class="block mt-1 text-xs text-cyan-400 underline">Unduh video</a>
+                                </div>
+                                <div id="vidinfo-{{ c.id }}" class="mt-1">
+                                    <button
+                                        id="genvid-{{ c.id }}"
+                                        onclick="generateVideo({{ c.id }})"
+                                        class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 rounded text-xs text-white font-medium">
+                                        🎬 Generate Video
+                                    </button>
+                                    <p id="vidhint-{{ c.id }}" class="text-gray-500 mt-2 text-xs">
+                                        Video preview dipakai untuk memastikan narasi & teks sudah pas sebelum approve/publish.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <strong class="text-gray-400">Script:</strong>
+                                    <p class="mt-1 text-gray-300 whitespace-pre-wrap">{{ c.script }}</p>
+                                </div>
+                                <div>
+                                    <strong class="text-gray-400">Caption:</strong>
+                                    <p class="mt-1 text-gray-300">{{ c.caption }}</p>
+                                    <strong class="text-gray-400 mt-3 block">Hashtags:</strong>
+                                    <p class="mt-1 text-gray-300">{{ c.hashtags }}</p>
+                                    <strong class="text-gray-400 mt-3 block">Visual Notes:</strong>
+                                    <p class="mt-1 text-gray-300 whitespace-pre-wrap">{{ c.visual_notes }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% if c.disclaimer %}
+                        <div class="mt-3 p-2 bg-yellow-900/30 border border-yellow-800 rounded text-yellow-300 text-xs">
+                            ⚠ {{ c.disclaimer }}
+                        </div>
+                        {% endif %}
+                        {% if c.error_log %}
+                        <div class="mt-3 p-2 bg-red-900/30 border border-red-800 rounded text-red-300 text-xs">
+                            🔴 Error: {{ c.error_log }}
+                        </div>
+                        {% endif %}
+                        {% if c.tiktok_post_id %}
+                        <div class="mt-3 p-2 bg-emerald-900/30 border border-emerald-800 rounded text-emerald-300 text-xs">
+                            ✅ TikTok post ID: {{ c.tiktok_post_id }}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not contents %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                        Belum ada konten. Klik <strong>Generate Now</strong> untuk membuat konten baru.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const GENERATING = {};
+
+    function toggleDetail(id, status) {
+        const el = document.getElementById('detail-' + id);
+        el.classList.toggle('hidden');
+        if (!el.classList.contains('hidden')) {
+            checkMedia(id, status);
+        }
+    }
+
+    async function checkMedia(id, status) {
+        try {
+            const res = await fetch(`/api/video/${id}/status`);
+            const data = await res.json();
+            if (data.video_url) {
+                const video = document.getElementById('vplayer-' + id);
+                const link = document.getElementById('vlink-' + id);
+                video.src = data.video_url;
+                link.href = data.video_url;
+                document.getElementById('videobox-' + id).classList.remove('hidden');
+                document.getElementById('genvid-' + id).textContent = '🎬 Regenerate Video';
+            } else if (['review', 'draft', 'rejected'].includes(status)) {
+                // Auto-generate preview video supaya bisa direview sebelum approve
+                if (!GENERATING[id]) generateVideo(id, true);
+            }
+        } catch (e) {}
+    }
+
+    async function generateVideo(id, auto = false) {
+        if (GENERATING[id]) return;
+        GENERATING[id] = true;
+        const btn = document.getElementById('genvid-' + id);
+        btn.disabled = true;
+        btn.textContent = auto ? '⏳ Membuat video preview... (±1-2 mnt)' : '⏳ Generate Video...';
+        try {
+            const res = await fetch(`/api/video/${id}/generate`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                const box = document.getElementById('videobox-' + id);
+                const video = document.getElementById('vplayer-' + id);
+                const link = document.getElementById('vlink-' + id);
+                video.src = data.video_url;
+                link.href = data.video_url;
+                box.classList.remove('hidden');
+                btn.textContent = '🎬 Regenerate Video';
+            } else {
+                alert('Gagal: ' + (data.detail || 'unknown error'));
+                btn.textContent = '🎬 Generate Video';
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+            btn.textContent = '🎬 Generate Video';
+        } finally {
+            btn.disabled = false;
+            delete GENERATING[id];
+        }
+    }
+</script>
+{% endblock %}
