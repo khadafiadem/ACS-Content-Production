@@ -10,7 +10,6 @@ Alur:
 Token store priority: file data/tiktok_tokens.json > env (fallback bootstrap).
 """
 
-import base64
 import hashlib
 import json
 import os
@@ -33,9 +32,9 @@ DEFAULT_SCOPES = "user.info.basic,video.publish,video.upload"
 
 
 def _pkce_pair() -> tuple[str, str]:
-    """Generate code_verifier (43-128 chars) + base64url(SHA256) code_challenge (S256)."""
+    """Generate code_verifier (43-128 chars) + hex-encoded SHA256 code_challenge (S256)."""
     verifier = secrets.token_urlsafe(64)
-    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    challenge = hashlib.sha256(verifier.encode()).hexdigest()
     return verifier, challenge
 
 
