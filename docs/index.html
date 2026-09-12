@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cipta Sehat Reborn — Health Education Video Production</title>
+  <meta name="description" content="Cipta Sehat Reborn is a content production platform that creates short health-education videos and publishes them to the creator's TikTok account via the TikTok Content Posting API.">
+  <style>
+    :root { --brand:#0e7c5a; --ink:#1d2b25; --bg:#f5faf8; --card:#ffffff; --line:#dbe7e2; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); line-height:1.65; }
+    header { background:var(--brand); color:#fff; padding:48px 24px; text-align:center; }
+    header h1 { font-size:1.8rem; letter-spacing:.5px; }
+    header p { margin-top:10px; max-width:640px; margin-left:auto; margin-right:auto; opacity:.95; }
+    main { max-width:860px; margin:0 auto; padding:32px 20px 64px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:24px; margin:20px 0; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    h2 { color:var(--brand); margin-bottom:10px; font-size:1.25rem; }
+    ul, ol { padding-left:22px; }
+    li { margin:6px 0; }
+    a { color:var(--brand); }
+    footer { text-align:center; padding:24px; font-size:.9rem; color:#5c6f67; }
+    footer a { margin:0 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cipta Sehat Reborn</h1>
+    <p>Content production platform for short health-education videos for TikTok</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>About</h2>
+      <p>Cipta Sehat Reborn ("Cipta Sehat") is an automated content production platform. It turns simple health topics into ready-to-post short videos: it generates the script and hook, builds narration with text-to-speech, assembles a 1080&times;1920 vertical video with animated captions and branded design, writes the caption and hashtags, and schedules the post.</p>
+      <p>The platform integrates with the TikTok Content Posting API so content can be uploaded and published to the TikTok account that has authorized the app.</p>
+    </div>
+
+    <div class="card">
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Create content</strong> — pick a health topic; the platform drafts a script, caption and hashtags (in Indonesian).</li>
+        <li><strong>Generate</strong> — narration is synthesized with text-to-speech and the vertical video is assembled automatically.</li>
+        <li><strong>Review &amp; schedule</strong> — content can be reviewed, approved, rejected or scheduled.</li>
+        <li><strong>Publish</strong> — after TikTok Login authorization, approved content is uploaded and published to the creator's TikTok account.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Content &amp; audience</h2>
+      <ul>
+        <li>Short-form educational videos about everyday health topics (sleep, nutrition, stretching, hydration, mental well-being).</li>
+        <li>All content is AI-assisted and labelled with AI-generated content tags on TikTok.</li>
+        <li>No medical advice; videos encourage viewers to consult healthcare professionals.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Contact</h2>
+      <p>Questions about this service, privacy or data handling can be directed to the operator who invited you to use it.</p>
+    </div>
+
+    <p style="text-align:center; margin-top:28px;">
+      <a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Service</a>
+    </p>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="yr"></span> Cipta Sehat Reborn.</p>
+    <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+  </footer>
+</body>
+</html>
