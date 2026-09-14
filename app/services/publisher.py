@@ -18,11 +18,34 @@ from sqlalchemy import select
 from app.config import settings
 from app.database import async_session
 from app.models import Content, ContentStatus
-from app.services.tiktok import upload_video
+from app.services.tiktok import upload_video, upload_draft
 from app.services.video_assembly import VIDEO_DIR
 from app.services.notification import notify_draft_ready
 
 logger = logging.getLogger(__name__)
+
+# Kode error TikTok yang artinya "app belum bisa posting publik" (sandbox/unaudited/scope).
+# Saat kena error ini, direct publish tidak mungkin → fallback ke Inbox/draft (scope video.upload).
+_DRAFT_FALLBACK_HINTS = (
+    "unaudit",
+    "audit",
+    "sandbox",
+    "scope_not_authorized",
+    "insufficient_scope",
+    "access_token_invalid",
+    "access_token_expired",
+    "permission",
+    "not authorized",
+    "forbidden",
+    "app status",
+)
+
+
+def _should_fallback_to_draft(result: dict) -> bool:
+    """True bila direct publish gagal karena status app/scope → coba Inbox/draft."""
+    code = (result.get("code") or "").lower()
+    text = (result.get("error") or "").lower()
+    return any(hint in code or hint in text for hint in _DRAFT_FALLBACK_HINTS)
 
 
 def tiktok_configured() -> bool:
@@ -56,8 +79,8 @@ async def publish_content(content_id: int, force: bool = False) -> dict:
         if not content:
             return {"success": False, "error": "Content not found", "id": content_id}
 
-        if not force and content.status not in (ContentStatus.SCHEDULED, ContentStatus.PUBLISHED):
-            return {"success": False, "error": f"Status {content.status.value} tidak bisa dipublish (harus scheduled)", "id": content_id}
+        if not force and content.status not in (ContentStatus.SCHEDULED, ContentStatus.PUBLISHED, ContentStatus.REVIEW):
+            return {"success": False, "error": f"Status {content.status.value} tidak bisa dipublish (harus scheduled atau review)", "id": content_id}
 
     try:
         video_path = await _ensure_video(content)
@@ -70,20 +93,26 @@ async def publish_content(content_id: int, force: bool = False) -> dict:
 
         result = await upload_video(video_path, caption)
 
+        if not result.get("success") and _should_fallback_to_draft(result):
+            logger.info(f"Direct post diblokir (unaudited/scope), fallback ke draft flow untuk content #{content_id}")
+            result = await upload_draft(video_path)
+
         async with async_session() as db:
             content = (await db.execute(select(Content).where(Content.id == content_id))).scalar_one_or_none()
             if not content:
                 return {"success": False, "error": "Content not found", "id": content_id}
 
             if result.get("success"):
-                content.status = ContentStatus.PUBLISHED
+                is_draft = result.get("mode") == "draft"
+                content.status = ContentStatus.DRAFT if is_draft else ContentStatus.PUBLISHED
                 content.published_at = datetime.now()
                 content.tiktok_post_id = result.get("publish_id", "")
                 content.error_log = None
                 await db.commit()
-                mode = "publik" if settings.auto_publish_public else "draft"
-                await notify_draft_ready(content.topic, content.id)
-                logger.info(f"Content #{content_id} published ({mode}). publish_id={result.get('publish_id')}")
+                mode = "publik" if settings.auto_publish_public and not is_draft else ("draft" if is_draft else "private")
+                if is_draft:
+                    await notify_draft_ready(content.topic, content.id)
+                logger.info(f"Content #{content_id} uploaded ({mode}). publish_id={result.get('publish_id')}")
                 return {"success": True, "mode": mode, "publish_id": result.get("publish_id"), "id": content_id}
             else:
                 content.status = ContentStatus.FAILED

@@ -18,13 +18,19 @@ Ketentuan MUTLAK:
    - Jangan membuka dengan frasa yang sama (misal jangan semuanya "Halo teman-teman, pernahkah...").
    - Variasikan gaya pembukaan, diksi, analogi, dan penutup antar konten.
    - Hindari mengulang kalimat atau frasa yang identik antara konten yang satu dengan yang lain, maupun dengan konten yang pernah dibuat sebelumnya.
+7. BAHASA MURNI INDONESIA: narasi ("script") HARUS 100% bahasa Indonesia sehari-hari.
+   - Terjemahkan semua istilah asing ke bahasa Indonesia, contoh: "brain fatigue" → "kelelahan otak", "stretching" → "peregangan", "vs" → "atau", "workout" → "olahraga", "stress" → "stres", "time management" → "mengatur waktu".
+   - JANGAN menulis kata bahasa Inggris di dalam script, termasuk pada topik dan hook.
+   - Hindari simbol/angka yang aneh saat dibacakan suara (misal tulis "seratus persen" bukan "100%").
 """
 
 TOPIC_SUGGESTIONS = """\
 Suggest 2 topik kesehatan yang menarik dan relevan untuk audiens Indonesia hari ini.
 Format JSON array: [{"topic": "...", "hook": "..."}]
 
-Contoh topik: nutrisi harian, mitos vs fakta medis, tips tidur, manfaat jalan kaki, kesehatan mental, stres kerja, minum air putih, stretching kantor.
+Contoh topik: nutrisi harian, mitos atau fakta medis, tips tidur, manfaat jalan kaki, kesehatan mental, stres kerja, minum air putih, peregangan kantor.
+
+Tulis topik dan hook DALAM BAHASA INDONESIA MURNI (jangan gunakan kata bahasa Inggris seperti "stretching", "health", "vs").
 
 HANYA output JSON array, tanpa teks tambahan.
 """

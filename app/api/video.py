@@ -67,3 +67,27 @@ async def watch(content_id: int):
     if not os.path.exists(video_path):
         raise HTTPException(status_code=404, detail="Video belum ada. Generate dulu.")
     return FileResponse(video_path, media_type="video/mp4")
+
+
+COVER_DIR = "data/covers"
+
+
+@router.get("/{content_id}/cover")
+async def video_cover(content_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Content).where(Content.id == content_id))
+    content = result.scalar_one_or_none()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    from app.services.video_assembly import render_background
+    from app.services.background import fetch_topic_background
+
+    os.makedirs(COVER_DIR, exist_ok=True)
+    cover_path = os.path.join(COVER_DIR, f"content_{content_id}.png")
+    bg_source = await fetch_topic_background(content.topic)
+    render_background(content, cover_path, bg_source=bg_source)
+    return FileResponse(
+        cover_path,
+        media_type="image/png",
+        filename=f"cover_{content_id}_tiktok.png",
+    )

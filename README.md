@@ -104,7 +104,7 @@ Generate → Review → Scheduled → Published
 | `GEMINI_API_KEY` | Ya | - | API key Gemini (gratis dari Google AI Studio) |
 | `GEMINI_MODEL` | Opsional | `gemini-3.5-flash-lite` | Model Gemini free tier |
 | `PEXELS_API_KEY` | Opsional | - | Background foto sesuai topik (gratis dari [pexels.com/api](https://www.pexels.com/api/)); kosong = fallback gradient |
-| `TIKTOK_CLIENT_KEY` | Untuk TikTok | - | Client key dari TikTok Developers |
+| `TIKTOK_CLIENT_KEY` | Untuk TikTok | - | Client key dari TikTok Developers (**app yang dipakai: "App konten dekstop", App ID `7684154418485102612`** — jangan tertukar dengan app "Aplikasi penjadwalan & publish otomatis konten") |
 | `TIKTOK_CLIENT_SECRET` | Untuk TikTok | - | Client secret |
 | `TIKTOK_ACCESS_TOKEN` | Untuk TikTok | - | OAuth access token |
 | `TIKTOK_REFRESH_TOKEN` | Untuk TikTok | - | OAuth refresh token |

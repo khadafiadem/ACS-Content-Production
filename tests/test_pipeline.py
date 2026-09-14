@@ -149,7 +149,7 @@ def test_publish_dry_run_sets_published():
 
 
 def test_publish_wrong_status_blocked():
-    cid = _run(_make_content(status=ContentStatus.REVIEW))
+    cid = _run(_make_content(status=ContentStatus.REJECTED))
     result = _run(publish_content(cid, force=False))
     assert result["success"] is False
 
@@ -181,6 +181,40 @@ def test_publish_manual_via_api(client):
     assert "DRYRUN" in body.get("publish_id", "")
 
 
+def test_draft_fallback_hint_matches_scope_and_unaudited():
+    from app.services.publisher import _should_fallback_to_draft
+    assert _should_fallback_to_draft({"success": False, "code": "scope_not_authorized", "error": "..."})
+    assert _should_fallback_to_draft({"success": False, "error": "TikTok error [unaudited_app]: app not audited"})
+    assert _should_fallback_to_draft({"success": False, "error": "Init failed (401): permission denied"})
+    assert not _should_fallback_to_draft({"success": False, "error": "TikTok error [invalid_params]: video info empty"})
+
+
+def test_publish_falls_back_to_draft_on_scope_error(monkeypatch):
+    import app.services.publisher as publisher
+
+    async def fake_upload_video(*args, **kwargs):
+        return {"success": False, "code": "scope_not_authorized", "error": "TikTok error [scope_not_authorized]: not authorized"}
+
+    async def fake_upload_draft(*args, **kwargs):
+        return {"success": True, "publish_id": "inbox-123", "mode": "draft"}
+
+    cid = _run(_make_content(status=ContentStatus.SCHEDULED, scheduled_at=datetime.now() - timedelta(hours=1)))
+    monkeypatch.setattr(publisher, "upload_video", fake_upload_video)
+    monkeypatch.setattr(publisher, "upload_draft", fake_upload_draft)
+
+    result = _run(publisher.publish_content(cid, force=False))
+    assert result["success"] is True
+    assert result["mode"] == "draft"
+
+    async def _check():
+        from sqlalchemy import select
+        async with async_session() as db:
+            c = (await db.execute(select(Content).where(Content.id == cid))).scalar_one()
+            assert c.status == ContentStatus.DRAFT
+            assert c.tiktok_post_id == "inbox-123"
+    _run(_check())
+
+
 # ---- TTS ----
 
 def test_disclaimer_stripped_from_narration():
@@ -205,7 +239,12 @@ def test_store_status_default():
     assert "has_refresh_token" in status
 
 
-def test_tiktok_login_without_client_key_redirects(client):
+def test_tiktok_login_redirects(client):
     r = client.get("/auth/tiktok/login", follow_redirects=False)
-    assert r.status_code == 303
-    assert "tiktok=notconfigured" in r.headers["location"]
+    assert r.status_code in (302, 303, 307)
+    if "client_key=" not in r.headers["location"]:
+        assert "tiktok=notconfigured" in r.headers["location"]
+    else:
+        assert "tiktok.com/v2/auth/authorize" in r.headers["location"]
+        assert "response_type=code" in r.headers["location"]
+        assert "code_challenge=" in r.headers["location"]

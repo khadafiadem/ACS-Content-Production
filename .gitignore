@@ -9,6 +9,7 @@ data/*.sqlite
 data/tiktok_tokens.json
 data/audio/
 data/videos/
+data/covers/
 node_modules/
 .venv/
 venv/

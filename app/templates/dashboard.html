@@ -97,6 +97,10 @@
                                     <a id="vlink-{{ c.id }}" href="#" download
                                        class="block mt-1 text-xs text-cyan-400 underline">Unduh video</a>
                                 </div>
+                                <a href="/api/video/{{ c.id }}/cover" download
+                                   class="block mt-1 text-xs text-cyan-400 underline hover:text-cyan-300">
+                                    🖼 Unduh cover (PNG)
+                                </a>
                                 <div id="vidinfo-{{ c.id }}" class="mt-1">
                                     <button
                                         id="genvid-{{ c.id }}"
@@ -124,11 +128,6 @@
                                 </div>
                             </div>
                         </div>
-                        {% if c.disclaimer %}
-                        <div class="mt-3 p-2 bg-yellow-900/30 border border-yellow-800 rounded text-yellow-300 text-xs">
-                            ⚠ {{ c.disclaimer }}
-                        </div>
-                        {% endif %}
                         {% if c.error_log %}
                         <div class="mt-3 p-2 bg-red-900/30 border border-red-800 rounded text-red-300 text-xs">
                             🔴 Error: {{ c.error_log }}

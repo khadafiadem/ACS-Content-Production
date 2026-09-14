@@ -22,8 +22,18 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 VIDEO_DIR = "data/videos"
-FONT_BOLD = "C:/Windows/Fonts/arialbd.ttf"
-FONT_REGULAR = "C:/Windows/Fonts/arial.ttf"
+
+_FONT_CANDIDATES = {False: [], True: []}
+_FONT_CANDIDATES[False] = [
+    "C:/Windows/Fonts/arial.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+]
+_FONT_CANDIDATES[True] = [
+    "C:/Windows/Fonts/arialbd.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+]
 
 BORDER_ACS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "border_acs.png")
 
@@ -55,6 +65,16 @@ def _cover_resize(img: Image.Image, size: tuple[int, int]) -> Image.Image:
     return img.crop((x, y, x + tw, y + th))
 
 
+def _load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    for path in _FONT_CANDIDATES[bold]:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except OSError:
+                continue
+    return ImageFont.load_default(size)
+
+
 def _wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
     lines = []
     for paragraph in text.split("\n"):
@@ -80,14 +100,30 @@ def _fit_script(
 ) -> tuple[int, list[str], int]:
     """Pilih ukuran font terbesar sehingga SELURUH script muat di area yang tersedia."""
     for size in range(44, 26, -1):
-        fnt = ImageFont.truetype(FONT_REGULAR, size)
+        fnt = _load_font(size)
         lines = _wrap_text(draw, text, fnt, max_width)
         line_h = int(size * 1.45)
         if len(lines) * line_h <= area_h:
             return size, lines, line_h
     size = 26
-    fnt = ImageFont.truetype(FONT_REGULAR, size)
+    fnt = _load_font(size)
     return size, _wrap_text(draw, text, fnt, max_width), int(size * 1.45)
+
+
+def _fit_hook(
+    draw: ImageDraw.ImageDraw, text: str, max_width: int, area_h: int, max_lines: int = 4
+) -> tuple[ImageFont.FreeTypeFont, list[str], int, bool]:
+    """Pilih font hook terbesar; bila tidak muat, kecilkan hingga 40 & beri elipsis."""
+    def _try(size: int):
+        fnt = _load_font(size, bold=True)
+        all_lines = _wrap_text(draw, text, fnt, max_width)
+        return fnt, all_lines[:max_lines], int(size * 1.45), len(all_lines) > max_lines
+
+    for size in range(64, 39, -2):
+        fnt, lines, line_h, truncated = _try(size)
+        if len(lines) * line_h <= area_h:
+            return fnt, lines, line_h, truncated
+    return _try(40)
 
 
 M = 36        # jarak bingkai ACS dari tepi video
@@ -108,32 +144,26 @@ def render_background(content: dict, out_path: str, bg_source: str | None = None
         _draw_gradient(draw)
 
     def font(size: int, bold: bool = True):
-        path = FONT_BOLD if bold else FONT_REGULAR
-        return ImageFont.truetype(path, size)
+        return _load_font(size, bold)
 
     # Branding luar dipegang oleh border_acs.png (logo atas + bar bawah)
 
-    # Hook (atas, besar) - diberi jarak aman dari logo border di atas
-    hook_font = font(64)
-    hook_lines = _wrap_text(draw, content.hook, hook_font, MAX_W)[:3]
-    y = 230
+    # Hook (atas, besar) - di bawah logo border (logo bottom ≈ y=245)
+    hook_font, hook_lines, hook_line_h, hook_trunc = _fit_hook(draw, content.hook, MAX_W, 330)
+    y = 280
     for line in hook_lines:
         draw.text((X, y), line, font=hook_font, fill=(255, 255, 255))
-        y += 78
+        y += hook_line_h
+    if hook_trunc:
+        draw.text((X, y + 4), "...", font=hook_font, fill=(120, 230, 220))
+        y += hook_line_h
 
     # Garis pemisah
     draw.rectangle([X, y + 10, W - X, y + 16], fill=(46, 204, 113))
 
-    # Disclaimer hitung dulu (untuk tahu batas atas area script)
-    disc_font = font(36, bold=False)
-    disc_lines = _wrap_text(draw, content.disclaimer, disc_font, MAX_W)
-    disc_line_h = 48
-    disc_bottom = H - 260
-    disc_top = disc_bottom - (len(disc_lines) * disc_line_h) - 24
-
     # Script (tengah) — font disesuaikan agar SELURUH teks muat, tidak terpotong
     script_top = y + 70
-    script_area_h = disc_top - script_top - 24
+    script_area_h = H - 260 - script_top - 24
     script_size, script_lines, script_line_h = _fit_script(
         draw, content.script, MAX_W, script_area_h
     )
@@ -145,12 +175,6 @@ def render_background(content: dict, out_path: str, bg_source: str | None = None
         cy += script_line_h
     if len(script_lines) > max_visible:
         draw.text((X, cy + 4), "...", font=script_font, fill=(120, 230, 220))
-
-    # Disclaimer (bawah, selalu di atas bingkai — jarak aman 260px dari dasar)
-    draw.rectangle([X - 34, disc_top, W - X + 34, disc_bottom], fill=(10, 30, 40))
-    for line in disc_lines:
-        draw.text((X, disc_top + 10), line, font=disc_font, fill=(160, 210, 210))
-        disc_top += disc_line_h
 
     img.save(out_path)
 
