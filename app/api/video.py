@@ -58,7 +58,9 @@ async def _build(content: Content) -> str:
     audio_path = await generate_audio(content.id, content.script)
     video_path = os.path.join(VIDEO_DIR, f"content_{content.id}.mp4")
     bg_source = await fetch_topic_background(content.topic)
-    return compose_video(content, audio_path, video_path, bg_source=bg_source)
+    return await asyncio.to_thread(
+        compose_video, content, audio_path, video_path, bg_source=bg_source
+    )
 
 
 @router.get("/watch/{content_id}")
